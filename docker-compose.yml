@@ -6,9 +6,29 @@ services:
       POSTGRES_USER: grillme
       POSTGRES_PASSWORD: grillme
       POSTGRES_DB: grillme
-    ports:
-      - "5432:5432"
     volumes:
       - grillme_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U grillme -d grillme"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://grillme:grillme@postgres:5432/grillme?schema=public
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:?set NEXTAUTH_SECRET in .env}
+      NEXTAUTH_URL: ${NEXTAUTH_URL:?set NEXTAUTH_URL in .env}
+      SEED_DEMO: ${SEED_DEMO:-false}
+    ports:
+      - "3000:3000"
+
 volumes:
   grillme_pgdata:
