@@ -106,6 +106,43 @@ sudo certbot --nginx -d your-domain.com
 
 Verify: `curl -I https://your-domain.com` should return `200`.
 
+## Troubleshooting
+
+**`PrismaClientInitializationError` / `Unable to require libquery_engine`**
+
+Prisma's engine cannot load. Causes, in order of likelihood:
+
+1. **OpenSSL missing.** All Dockerfile stages install `openssl` and `libc6-compat`
+   from Alpine. If you edited the Dockerfile, keep that.
+2. **Stale image from before the fix.** Rebuild without cache:
+   ```bash
+   docker compose build --no-cache app && docker compose up -d app
+   ```
+3. **Host/architecture mismatch.** Check that `node_modules/.prisma/client` and
+   `node_modules/@prisma/engines` contain a `linux-musl` engine, not `darwin`:
+   ```bash
+   docker compose run --rm --entrypoint sh app -c 'ls node_modules/.prisma/client node_modules/@prisma/engines'
+   ```
+   Building on an Apple Silicon Mac and pushing that image to an x86 server will
+   produce the wrong engine. Build on the server.
+
+**App container restarts in a loop**
+
+```bash
+docker compose logs --tail=50 app
+```
+
+`Database not reachable after 60s` means the `app` service cannot see `postgres`.
+Check `POSTGRES_PASSWORD` in `docker-compose.yml` matches `DATABASE_URL` on the
+`app` service, and that `docker compose ps` shows Postgres healthy.
+
+**Migrations fail to apply**
+
+```bash
+docker compose exec app prisma migrate status
+docker compose exec app prisma migrate deploy
+```
+
 ## Updating
 
 ```bash
