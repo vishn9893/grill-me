@@ -1,0 +1,163 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  MODERATOR
+  ADMIN
+}
+
+enum PostType {
+  LINK
+  TEXT
+}
+
+enum VoteType {
+  UP
+  DOWN
+}
+
+enum ReportStatus {
+  OPEN
+  RESOLVED
+  DISMISSED
+}
+
+model User {
+  id String @id @default(cuid())
+  name String?
+  username String @unique
+  email String @unique
+  emailVerified DateTime?
+  image String?
+  passwordHash String
+  bio String?
+  karma Int @default(0)
+  role Role @default(USER)
+  posts Post[]
+  comments Comment[]
+  votes Vote[]
+  sessions Session[]
+  accounts Account[]
+  reports Report[] @relation("Reporter")
+  resolvedReports Report[] @relation("Resolver")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Account {
+  id String @id @default(cuid())
+  userId String
+  type String
+  provider String
+  providerAccountId String
+  refresh_token String? @db.Text
+  access_token String? @db.Text
+  expires_at Int?
+  token_type String?
+  scope String?
+  id_token String? @db.Text
+  session_state String?
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id String @id @default(cuid())
+  sessionToken String @unique
+  userId String
+  expires DateTime
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token String @unique
+  expires DateTime
+  @@unique([identifier, token])
+}
+
+model Category {
+  id String @id @default(cuid())
+  name String @unique
+  slug String @unique
+  posts Post[]
+}
+
+model Post {
+  id String @id @default(cuid())
+  title String
+  url String?
+  body String? @db.Text
+  type PostType @default(LINK)
+  score Int @default(0)
+  commentCount Int @default(0)
+  viewCount Int @default(0)
+  authorId String
+  categoryId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+  author User @relation(fields: [authorId], references: [id])
+  category Category @relation(fields: [categoryId], references: [id])
+  comments Comment[]
+  votes Vote[]
+  reports Report[]
+  @@index([createdAt])
+  @@index([score])
+  @@index([categoryId])
+}
+
+model Comment {
+  id String @id @default(cuid())
+  body String @db.Text
+  score Int @default(0)
+  postId String
+  authorId String
+  parentId String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author User @relation(fields: [authorId], references: [id])
+  parent Comment? @relation("CommentReplies", fields: [parentId], references: [id])
+  replies Comment[] @relation("CommentReplies")
+  votes Vote[]
+  reports Report[]
+  @@index([postId, createdAt])
+}
+
+model Vote {
+  id String @id @default(cuid())
+  type VoteType
+  userId String
+  postId String?
+  commentId String?
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post? @relation(fields: [postId], references: [id], onDelete: Cascade)
+  comment Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  @@index([userId, postId])
+  @@index([userId, commentId])
+}
+
+model Report {
+  id String @id @default(cuid())
+  reason String
+  status ReportStatus @default(OPEN)
+  reporterId String
+  postId String?
+  commentId String?
+  resolvedById String?
+  createdAt DateTime @default(now())
+  resolvedAt DateTime?
+  reporter User @relation("Reporter", fields: [reporterId], references: [id])
+  resolver User? @relation("Resolver", fields: [resolvedById], references: [id])
+  post Post? @relation(fields: [postId], references: [id], onDelete: Cascade)
+  comment Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+}

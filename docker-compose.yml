@@ -1,0 +1,14 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: grillme
+      POSTGRES_PASSWORD: grillme
+      POSTGRES_DB: grillme
+    ports:
+      - "5432:5432"
+    volumes:
+      - grillme_pgdata:/var/lib/postgresql/data
+volumes:
+  grillme_pgdata:

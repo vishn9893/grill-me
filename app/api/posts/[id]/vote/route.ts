@@ -1,0 +1,5 @@
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
+import { prisma } from '@/lib/prisma';
+import { getSession } from '@/lib/auth';
+export async function POST(req: Request, { params }: { params: { id: string } }) { const session = await getSession(); if (!session?.user?.id) return NextResponse.json({ error: 'Sign in required' }, { status: 401 }); const { type } = z.object({ type: z.enum(['UP','DOWN']) }).parse(await req.json()); const result = await prisma.$transaction(async tx => { const existing = await tx.vote.findFirst({ where: { postId: params.id, userId: session.user.id } }); let delta = type === 'UP' ? 1 : -1; if (existing?.type === type) { await tx.vote.delete({ where: { id: existing.id } }); delta = -delta; } else { if (existing) { await tx.vote.update({ where: { id: existing.id }, data: { type } }); delta *= 2; } else await tx.vote.create({ data: { postId: params.id, userId: session.user.id, type } }); } return tx.post.update({ where: { id: params.id }, data: { score: { increment: delta } }, select: { score: true } }); }); return NextResponse.json(result); }

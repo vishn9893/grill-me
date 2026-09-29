@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Hacker News Clone</title>
+<link rel="stylesheet" href="static/style.css">
+</head>
+<body>
+<h1>Hacker News Clone</h1>
+<ul>
+{% for post in posts %}
+  <li>
+    <a href="{{ post.link }}">{{ post.title }}</a> - {{ post.score }} points
+  </li>
+{% endfor %}
+</ul>
+</body>
+</html>
